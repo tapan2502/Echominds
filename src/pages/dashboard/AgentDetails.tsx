@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+"use client"
+
+import { useState, useEffect } from "react"
+import { useParams, Link } from "react-router-dom"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   ArrowLeft,
   Check,
@@ -17,178 +19,166 @@ import {
   ChevronRight,
   Plus,
   Database,
-} from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import CallTesting from '../../components/CallTesting';
-import { KnowledgeBaseSelect } from '../../components/KnowledgeBaseSelect';
-import { VoiceModal } from '../../components/VoiceModal'; // <-- The updated VoiceModal
-import { ModelSelect } from '../../components/ModelSelect';
-import { ToolConfigModal } from '../../components/ToolConfigModal';
-import { LanguageSelect } from '../../components/LanguageSelect';
-import { Loader, PageLoader } from '../../components/Loader';
-import {
-  getModelId,
-  getModelTypeFromId,
-  getLanguageName,
-  llmOptions,
-} from '../../lib/constants';
+} from "lucide-react"
+import { useAuth } from "../../contexts/AuthContext"
+import CallTesting from "../../components/CallTesting"
+import AgentSettings from "../../components/AgentSettings"
+import { KnowledgeBaseSelect } from "../../components/KnowledgeBaseSelect"
+import { VoiceModal } from "../../components/VoiceModal"
+import { ModelSelect } from "../../components/ModelSelect"
+import { ToolConfigModal } from "../../components/ToolConfigModal"
+import { LanguageSelect } from "../../components/LanguageSelect"
+import { Loader, PageLoader } from "../../components/Loader"
+import { getModelId, getModelTypeFromId, getLanguageName, llmOptions } from "../../lib/constants"
 
 interface AgentDetails {
-  agent_id: string;
-  name: string;
+  agent_id: string
+  name: string
   conversation_config: {
     agent: {
       prompt: {
-        prompt: string;
-        llm: string;
-        temperature: number;
+        prompt: string
+        llm: string
+        temperature: number
         knowledge_base: {
-          id: string;
-          name: string;
-          type: string;
-        }[];
+          id: string
+          name: string
+          type: string
+        }[]
         tools: {
-          type: string;
-          name: string;
-          description: string;
+          type: string
+          name: string
+          description: string
           api_schema: {
-            url: string;
-            method: string;
-          };
-        }[];
-      };
-      first_message: string;
-      language: string;
-    };
+            url: string
+            method: string
+          }
+        }[]
+      }
+      first_message: string
+      language: string
+    }
     tts: {
-      voice_id: string;
-      model_id: string;
-    };
-  };
+      voice_id: string
+      model_id: string
+    }
+  }
 }
 
 interface VoiceLabels {
-  accent?: string;
-  description?: string;
-  age?: string;
-  gender?: string;
-  use_case?: string;
+  accent?: string
+  description?: string
+  age?: string
+  gender?: string
+  use_case?: string
 }
 
 interface Voice {
-  voice_id: string;
-  name: string;
-  preview_url: string;
-  labels?: VoiceLabels;
+  voice_id: string
+  name: string
+  preview_url: string
+  labels?: VoiceLabels
 }
 
 interface KnowledgeBaseDocument {
-  id: string;
-  name: string;
-  type: 'file' | 'url';
-  extracted_inner_html: string;
+  id: string
+  name: string
+  type: "file" | "url"
+  extracted_inner_html: string
 }
 
 interface EditForm {
-  name: string;
-  prompt: string;
-  llm: string;
-  temperature: number;
-  first_message: string;
-  voice_id: string;
-  language: string;
-  modelType: string;
+  name: string
+  prompt: string
+  llm: string
+  temperature: number
+  first_message: string
+  voice_id: string
+  language: string
+  modelType: string
   knowledge_base: Array<{
-    id: string;
-    name: string;
-    type: string;
-  }>;
+    id: string
+    name: string
+    type: string
+  }>
   tools: Array<{
-    type: string;
-    name: string;
-    description: string;
+    type: string
+    name: string
+    description: string
     api_schema: {
-      url: string;
-      method: string;
-    };
-  }>;
+      url: string
+      method: string
+    }
+  }>
 }
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 // Basic agent icon logic
-const agentIcons = [{ icon: Speech, color: 'primary' }];
+const agentIcons = [{ icon: Speech, color: "primary" }]
 const getAgentIcon = (agentId: string) => {
-  const index =
-    Math.abs(
-      agentId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    ) % agentIcons.length;
-  return agentIcons[index];
-};
+  const index = Math.abs(agentId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)) % agentIcons.length
+  return agentIcons[index]
+}
 
 const AgentDetails = () => {
-  const { agentId } = useParams<{ agentId: string }>();
-  const { user } = useAuth();
+  const { agentId } = useParams<{ agentId: string }>()
+  const { user } = useAuth()
 
-  const [agent, setAgent] = useState<AgentDetails | null>(null);
-  const [voice, setVoice] = useState<Voice | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [voices, setVoices] = useState<Voice[]>([]);
-  const [loadingVoices, setLoadingVoices] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBaseDocument[]>([]);
-  const [loadingKnowledgeBase, setLoadingKnowledgeBase] = useState(false);
+  const [agent, setAgent] = useState<AgentDetails | null>(null)
+  const [voice, setVoice] = useState<Voice | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+  const [voices, setVoices] = useState<Voice[]>([])
+  const [loadingVoices, setLoadingVoices] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBaseDocument[]>([])
+  const [loadingKnowledgeBase, setLoadingKnowledgeBase] = useState(false)
 
   // UI toggles
-  const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [showVoiceModal, setShowVoiceModal] = useState(false);
-  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const [selectedTool, setSelectedTool] = useState<any>(null);
-  const [isCreatingTool, setIsCreatingTool] = useState(false);
+  const [showModelDropdown, setShowModelDropdown] = useState(false)
+  const [showVoiceModal, setShowVoiceModal] = useState(false)
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
+  const [selectedTool, setSelectedTool] = useState<any>(null)
+  const [isCreatingTool, setIsCreatingTool] = useState(false)
 
   // The form data
   const [editForm, setEditForm] = useState<EditForm>({
-    name: '',
-    prompt: '',
-    llm: '',
+    name: "",
+    prompt: "",
+    llm: "",
     temperature: 0.7,
-    first_message: '',
-    voice_id: '',
-    language: 'en',
-    modelType: 'turbo',
+    first_message: "",
+    voice_id: "",
+    language: "en",
+    modelType: "turbo",
     knowledge_base: [],
     tools: [],
-  });
-  const [editedForm, setEditedForm] = useState<EditForm>(editForm);
+  })
+  const [editedForm, setEditedForm] = useState<EditForm>(editForm)
 
   // Fetch agent details
   const fetchAgentDetails = async () => {
-    if (!user || !agentId) return;
+    if (!user || !agentId) return
 
     try {
-      setLoading(true);
+      setLoading(true)
 
       // 1) Fetch the Agent
-      const response = await fetch(
-        `${BACKEND_URL}/agents/${user.uid}/${agentId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${await user.getIdToken()}`,
-          },
-        }
-      );
+      const response = await fetch(`${BACKEND_URL}/agents/${user.uid}/${agentId}`, {
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`,
+        },
+      })
       if (!response.ok) {
-        throw new Error('Failed to fetch agent details');
+        throw new Error("Failed to fetch agent details")
       }
-      const agentData: AgentDetails = await response.json();
-      setAgent(agentData);
+      const agentData: AgentDetails = await response.json()
+      setAgent(agentData)
 
       // Extract model type from model_id
-      const modelType = getModelTypeFromId(
-        agentData.conversation_config.tts.model_id
-      );
+      const modelType = getModelTypeFromId(agentData.conversation_config.tts.model_id)
 
       const initialForm = {
         name: agentData.name,
@@ -197,14 +187,13 @@ const AgentDetails = () => {
         temperature: agentData.conversation_config.agent.prompt.temperature,
         first_message: agentData.conversation_config.agent.first_message,
         voice_id: agentData.conversation_config.tts.voice_id,
-        language: agentData.conversation_config.agent.language || 'en',
+        language: agentData.conversation_config.agent.language || "en",
         modelType,
-        knowledge_base:
-          agentData.conversation_config.agent.prompt.knowledge_base || [],
+        knowledge_base: agentData.conversation_config.agent.prompt.knowledge_base || [],
         tools: agentData.conversation_config.agent.prompt.tools || [],
-      };
-      setEditForm(initialForm);
-      setEditedForm(initialForm);
+      }
+      setEditForm(initialForm)
+      setEditedForm(initialForm)
 
       // 2) Fetch details of the currently selected voice
       const voiceResponse = await fetch(
@@ -213,185 +202,174 @@ const AgentDetails = () => {
           headers: {
             Authorization: `Bearer ${await user.getIdToken()}`,
           },
-        }
-      );
+        },
+      )
       if (voiceResponse.ok) {
-        const voiceData: Voice = await voiceResponse.json();
-        setVoice(voiceData);
+        const voiceData: Voice = await voiceResponse.json()
+        setVoice(voiceData)
       }
 
       // 3) Fetch ALL voices
-      setLoadingVoices(true);
+      setLoadingVoices(true)
       const voicesResponse = await fetch(`${BACKEND_URL}/voices/list-voices`, {
         headers: {
           Authorization: `Bearer ${await user.getIdToken()}`,
         },
-      });
+      })
       if (voicesResponse.ok) {
-        const data = await voicesResponse.json();
+        const data = await voicesResponse.json()
         if (data.voices && Array.isArray(data.voices)) {
-          setVoices(data.voices);
+          setVoices(data.voices)
         }
       }
 
       // 4) Fetch knowledge base docs
-      setLoadingKnowledgeBase(true);
-      const kbResponse = await fetch(
-        `${BACKEND_URL}/knowledge-base/${user.uid}`,
-        {
-          headers: {
-            Authorization: `Bearer ${await user.getIdToken()}`,
-          },
-        }
-      );
+      setLoadingKnowledgeBase(true)
+      const kbResponse = await fetch(`${BACKEND_URL}/knowledge-base/${user.uid}`, {
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`,
+        },
+      })
       if (kbResponse.ok) {
-        const kbData = await kbResponse.json();
-        setKnowledgeBase(kbData.documents || []);
+        const kbData = await kbResponse.json()
+        setKnowledgeBase(kbData.documents || [])
       }
     } catch (err) {
-      console.error('Error fetching agent details:', err);
-      setError('Failed to load agent details. Please try again.');
+      console.error("Error fetching agent details:", err)
+      setError("Failed to load agent details. Please try again.")
     } finally {
-      setLoading(false);
-      setLoadingVoices(false);
-      setLoadingKnowledgeBase(false);
+      setLoading(false)
+      setLoadingVoices(false)
+      setLoadingKnowledgeBase(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchAgentDetails();
+    fetchAgentDetails()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, agentId]);
+  }, [user, agentId])
 
   // Save changes to backend
   const handleSave = async () => {
-    if (!user || !agentId) return;
+    if (!user || !agentId) return
     try {
-      setSaving(true);
-      setError('');
+      setSaving(true)
+      setError("")
 
-      const response = await fetch(
-        `${BACKEND_URL}/agents/${user.uid}/${agentId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${await user.getIdToken()}`,
-          },
-          body: JSON.stringify({
-            name: editedForm.name,
-            conversation_config: {
-              agent: {
-                prompt: {
-                  prompt: editedForm.prompt,
-                  llm: editedForm.llm,
-                  temperature: editedForm.temperature,
-                  knowledge_base: editedForm.knowledge_base,
-                  tools: editedForm.tools,
-                },
-                first_message: editedForm.first_message,
-                language: editedForm.language,
+      const response = await fetch(`${BACKEND_URL}/agents/${user.uid}/${agentId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await user.getIdToken()}`,
+        },
+        body: JSON.stringify({
+          name: editedForm.name,
+          conversation_config: {
+            agent: {
+              prompt: {
+                prompt: editedForm.prompt,
+                llm: editedForm.llm,
+                temperature: editedForm.temperature,
+                knowledge_base: editedForm.knowledge_base,
+                tools: editedForm.tools,
               },
-              tts: {
-                voice_id: editedForm.voice_id,
-                model_id: getModelId(editedForm.modelType, editedForm.language),
-              },
+              first_message: editedForm.first_message,
+              language: editedForm.language,
             },
-          }),
-        }
-      );
+            tts: {
+              voice_id: editedForm.voice_id,
+              model_id: getModelId(editedForm.modelType, editedForm.language),
+            },
+          },
+        }),
+      })
       if (!response.ok) {
-        throw new Error('Failed to update agent');
+        throw new Error("Failed to update agent")
       }
-      await fetchAgentDetails();
-      setHasChanges(false);
+      await fetchAgentDetails()
+      setHasChanges(false)
     } catch (err) {
-      console.error('Error updating agent:', err);
-      setError('Failed to update agent. Please try again.');
+      console.error("Error updating agent:", err)
+      setError("Failed to update agent. Please try again.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   // Cancel changes
   const handleCancel = () => {
-    setEditedForm(editForm);
-    setHasChanges(false);
+    setEditedForm(editForm)
+    setHasChanges(false)
 
     // Reset voice display to original voice
-    const originalVoice = voices.find((v) => v.voice_id === editForm.voice_id);
-    setVoice(originalVoice || null);
+    const originalVoice = voices.find((v) => v.voice_id === editForm.voice_id)
+    setVoice(originalVoice || null)
 
-    setShowModelDropdown(false);
-    setShowLanguageDropdown(false);
-  };
+    setShowModelDropdown(false)
+    setShowLanguageDropdown(false)
+  }
 
   // Utility for updating editedForm and marking unsaved changes
-  const handleChange = (
-    field: keyof EditForm,
-    value: string | number | any[]
-  ) => {
-    setEditedForm((prev) => ({ ...prev, [field]: value }));
-    setHasChanges(true);
-  };
+  const handleChange = (field: keyof EditForm, value: string | number | any[]) => {
+    setEditedForm((prev) => ({ ...prev, [field]: value }))
+    setHasChanges(true)
+  }
 
   // Create a new tool
   const handleCreateTool = () => {
     const newTool = {
-      type: 'webhook',
-      name: '',
-      description: '',
+      type: "webhook",
+      name: "",
+      description: "",
       api_schema: {
-        url: '',
-        method: 'POST',
+        url: "",
+        method: "POST",
         request_body_schema: {
-          type: 'object',
+          type: "object",
           properties: {},
           required: [],
         },
       },
-    };
-    setSelectedTool(newTool);
-    setIsCreatingTool(true);
-  };
+    }
+    setSelectedTool(newTool)
+    setIsCreatingTool(true)
+  }
 
   // Save a tool (either new or edited)
   const handleToolSave = (updatedTool: any) => {
     if (isCreatingTool) {
       setEditedForm((prev) => ({
         ...prev,
-        tools: [...(prev.tools || []), { ...updatedTool, method: 'POST' }],
-      }));
-      setIsCreatingTool(false);
+        tools: [...(prev.tools || []), { ...updatedTool, method: "POST" }],
+      }))
+      setIsCreatingTool(false)
     } else {
       const updatedTools = editedForm.tools.map((tool) =>
-        tool.name === selectedTool?.name ? { ...updatedTool, method: 'POST' } : tool
-      );
+        tool.name === selectedTool?.name ? { ...updatedTool, method: "POST" } : tool,
+      )
       setEditedForm((prev) => ({
         ...prev,
         tools: updatedTools,
-      }));
+      }))
     }
-    setSelectedTool(null);
-    setHasChanges(true);
-  };
+    setSelectedTool(null)
+    setHasChanges(true)
+  }
 
   const handleToolUpdate = (updatedTool: any) => {
-    const updatedTools = editedForm.tools.map((tool) =>
-      tool.name === updatedTool.name ? updatedTool : tool
-    );
-    handleChange('tools', updatedTools);
-  };
+    const updatedTools = editedForm.tools.map((tool) => (tool.name === updatedTool.name ? updatedTool : tool))
+    handleChange("tools", updatedTools)
+  }
 
   // Called when user picks a new voice in the VoiceModal
   const handleVoiceChange = (voiceId: string) => {
-    handleChange('voice_id', voiceId);
-    const newVoice = voices.find((v) => v.voice_id === voiceId) || null;
-    setVoice(newVoice);
-  };
+    handleChange("voice_id", voiceId)
+    const newVoice = voices.find((v) => v.voice_id === voiceId) || null
+    setVoice(newVoice)
+  }
 
   if (loading) {
-    return <PageLoader />;
+    return <PageLoader />
   }
 
   if (!agent) {
@@ -399,12 +377,9 @@ const AgentDetails = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-heading font-bold text-gray-900 dark:text-white mb-2">
-            Agent not found
-          </h2>
+          <h2 className="text-2xl font-heading font-bold text-gray-900 dark:text-white mb-2">Agent not found</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            The agent you're looking for doesn't exist or you don't have access
-            to it.
+            The agent you're looking for doesn't exist or you don't have access to it.
           </p>
           <Link
             to="/dashboard/agents"
@@ -415,25 +390,25 @@ const AgentDetails = () => {
           </Link>
         </div>
       </div>
-    );
+    )
   }
 
-  const { icon: Icon, color } = getAgentIcon(agent.agent_id);
+  const { icon: Icon, color } = getAgentIcon(agent.agent_id)
   const colorClasses: Record<string, string> = {
-    primary:
-      'from-primary/20 to-primary/10 text-primary dark:from-primary/30 dark:to-primary/20',
-    indigo: 'from-indigo-500/20 to-indigo-500/10 text-indigo-500',
-    rose: 'from-rose-500/20 to-rose-500/10 text-rose-500',
-    sky: 'from-sky-500/20 to-sky-500/10 text-sky-500',
-    yellow: 'from-yellow-500/20 to-yellow-500/10 text-yellow-500',
-  };
+    primary: "from-primary/20 to-primary/10 text-primary dark:from-primary/30 dark:to-primary/20",
+    indigo: "from-indigo-500/20 to-indigo-500/10 text-indigo-500",
+    rose: "from-rose-500/20 to-rose-500/10 text-rose-500",
+    sky: "from-sky-500/20 to-sky-500/10 text-sky-500",
+    yellow: "from-yellow-500/20 to-yellow-500/10 text-yellow-500",
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">
-      <div className="flex gap-8">
-        <div className="flex-1">
+    <div className="w-full px-2 py-4 pb-20">
+      <div className="flex gap-3">
+        {/* Left panel - Agent details */}
+        <div className="w-[38%]">
           <div className="bg-white dark:bg-dark-200 rounded-xl shadow-sm border border-gray-100 dark:border-dark-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-200 dark:border-dark-100">
+            <div className="p-4 border-b border-gray-200 dark:border-dark-100">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <Link
@@ -452,19 +427,17 @@ const AgentDetails = () => {
                       <input
                         type="text"
                         value={editedForm.name}
-                        onChange={(e) => handleChange('name', e.target.value)}
+                        onChange={(e) => handleChange("name", e.target.value)}
                         className="text-2xl font-heading font-bold text-gray-900 dark:text-white bg-transparent border-0 focus:ring-0 p-0 focus:border-0"
                       />
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Agent ID: {agent.agent_id}
-                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Agent ID: {agent.agent_id}</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="p-6 space-y-8">
+            <div className="p-4 space-y-6">
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -20 }}
@@ -473,12 +446,8 @@ const AgentDetails = () => {
                 >
                   <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                      Error
-                    </h3>
-                    <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                      {error}
-                    </p>
+                    <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
                   </div>
                 </motion.div>
               )}
@@ -488,16 +457,14 @@ const AgentDetails = () => {
                 {/* Model Card */}
                 <button
                   onClick={(e) => {
-                    e.preventDefault();
-                    setShowModelDropdown((prev) => !prev);
+                    e.preventDefault()
+                    setShowModelDropdown((prev) => !prev)
                   }}
                   className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5 relative cursor-pointer hover:from-primary/10 hover:to-primary/20 transition-all"
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <MessageSquare className="w-4 h-4 text-primary dark:text-primary-400" />
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                      Model
-                    </h3>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">Model</h3>
                   </div>
                   {!showModelDropdown ? (
                     <p className="text-2xl font-heading font-bold text-primary dark:text-primary-400">
@@ -507,7 +474,7 @@ const AgentDetails = () => {
                     <div className="mt-2" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={editedForm.llm}
-                        onChange={(e) => handleChange('llm', e.target.value)}
+                        onChange={(e) => handleChange("llm", e.target.value)}
                         className="rounded-lg border-2 border-primary bg-white dark:bg-dark-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-gray-900 dark:text-gray-100"
                       >
                         {llmOptions.map((model) => (
@@ -527,13 +494,11 @@ const AgentDetails = () => {
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <Volume2 className="w-4 h-4 text-primary dark:text-primary-400" />
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                      Voice
-                    </h3>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">Voice</h3>
                   </div>
                   {/* Selected voice name */}
                   <p className="text-2xl font-heading font-bold text-primary dark:text-primary-400">
-                    {voice?.name || 'Not Set'}
+                    {voice?.name || "Not Set"}
                   </p>
 
                   {/* Additional labels */}
@@ -575,9 +540,7 @@ const AgentDetails = () => {
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <Globe className="w-4 h-4 text-primary dark:text-primary-400" />
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                      Language
-                    </h3>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">Language</h3>
                   </div>
                   {!showLanguageDropdown ? (
                     <p className="text-2xl font-heading font-bold text-primary dark:text-primary-400">
@@ -587,7 +550,7 @@ const AgentDetails = () => {
                     <div className="mt-2" onClick={(e) => e.stopPropagation()}>
                       <LanguageSelect
                         value={editedForm.language}
-                        onChange={(value) => handleChange('language', value)}
+                        onChange={(value) => handleChange("language", value)}
                       />
                     </div>
                   )}
@@ -598,14 +561,9 @@ const AgentDetails = () => {
               <div className="space-y-4 mt-6">
                 <div className="flex items-center space-x-2">
                   <Settings className="w-4 h-4 text-primary dark:text-primary-400" />
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                    Voice Model
-                  </h3>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Voice Model</h3>
                 </div>
-                <ModelSelect
-                  modelType={editedForm.modelType}
-                  onChange={(value) => handleChange('modelType', value)}
-                />
+                <ModelSelect modelType={editedForm.modelType} onChange={(value) => handleChange("modelType", value)} />
               </div>
 
               {/* Temperature Slider */}
@@ -622,14 +580,11 @@ const AgentDetails = () => {
                   max="1"
                   step="0.1"
                   value={editedForm.temperature}
-                  onChange={(e) =>
-                    handleChange('temperature', parseFloat(e.target.value))
-                  }
+                  onChange={(e) => handleChange("temperature", Number.parseFloat(e.target.value))}
                   className="w-full"
                 />
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Adjust creativity level: 0 for focused responses, 1 for more
-                  creative outputs
+                  Adjust creativity level: 0 for focused responses, 1 for more creative outputs
                 </p>
               </div>
 
@@ -637,15 +592,11 @@ const AgentDetails = () => {
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <MessageSquare className="w-5 h-5 text-primary dark:text-primary-400" />
-                  <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">
-                    First Message
-                  </h3>
+                  <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">First Message</h3>
                 </div>
                 <textarea
                   value={editedForm.first_message}
-                  onChange={(e) =>
-                    handleChange('first_message', e.target.value)
-                  }
+                  onChange={(e) => handleChange("first_message", e.target.value)}
                   rows={2}
                   className="input"
                   placeholder="Enter the first message your agent will say..."
@@ -656,13 +607,11 @@ const AgentDetails = () => {
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <Sparkles className="w-5 h-5 text-primary dark:text-primary-400" />
-                  <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">
-                    Prompt
-                  </h3>
+                  <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">Prompt</h3>
                 </div>
                 <textarea
                   value={editedForm.prompt}
-                  onChange={(e) => handleChange('prompt', e.target.value)}
+                  onChange={(e) => handleChange("prompt", e.target.value)}
                   rows={6}
                   className="input"
                   placeholder="Enter the agent's behavior and instructions..."
@@ -674,9 +623,7 @@ const AgentDetails = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Webhook className="w-5 h-5 text-primary dark:text-primary-400" />
-                    <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">
-                      Tools
-                    </h3>
+                    <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">Tools</h3>
                   </div>
                   <button
                     onClick={handleCreateTool}
@@ -691,12 +638,8 @@ const AgentDetails = () => {
                   {editedForm.tools?.length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 dark:bg-dark-100 rounded-xl">
                       <Webhook className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        No tools configured
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Tools functionality coming soon
-                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">No tools configured</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tools functionality coming soon</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-200 dark:divide-dark-100">
@@ -712,12 +655,8 @@ const AgentDetails = () => {
                                 <Webhook className="w-5 h-5 text-primary dark:text-primary-400" />
                               </div>
                               <div>
-                                <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {tool.name}
-                                </h4>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  {tool.description}
-                                </p>
+                                <h4 className="text-sm font-medium text-gray-900 dark:text-white">{tool.name}</h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{tool.description}</p>
                               </div>
                             </div>
                             <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
@@ -753,9 +692,7 @@ const AgentDetails = () => {
                 ) : knowledgeBase.length === 0 ? (
                   <div className="text-center py-8 bg-gray-50 dark:bg-dark-100 rounded-xl">
                     <Database className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      No knowledge base documents found.
-                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">No knowledge base documents found.</p>
                     <Link
                       to="/dashboard/knowledge"
                       className="text-sm text-primary hover:text-primary-600 dark:hover:text-primary-400 mt-2 inline-block"
@@ -767,29 +704,24 @@ const AgentDetails = () => {
                   <div className="space-y-4">
                     <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
                       <p className="text-sm text-blue-800 dark:text-blue-200">
-                        Select documents to include in your agent's knowledge
-                        base. The agent will use these documents to provide more
-                        accurate and contextual responses.
+                        Select documents to include in your agent's knowledge base. The agent will use these documents
+                        to provide more accurate and contextual responses.
                       </p>
                     </div>
                     <div className="pb-[300px]">
                       <KnowledgeBaseSelect
                         documents={knowledgeBase}
-                        selectedDocuments={editedForm.knowledge_base.map(
-                          (kb) => kb.id
-                        )}
+                        selectedDocuments={editedForm.knowledge_base.map((kb) => kb.id)}
                         onSelectionChange={(selectedIds) => {
                           const selectedDocs = selectedIds.map((id) => {
-                            const doc = knowledgeBase.find(
-                              (kb) => kb.id === id
-                            );
+                            const doc = knowledgeBase.find((kb) => kb.id === id)
                             return {
                               id: doc!.id,
                               name: doc!.name,
                               type: doc!.type,
-                            };
-                          });
-                          handleChange('knowledge_base', selectedDocs);
+                            }
+                          })
+                          handleChange("knowledge_base", selectedDocs)
                         }}
                       />
                     </div>
@@ -800,8 +732,15 @@ const AgentDetails = () => {
           </div>
         </div>
 
-        {/* Call Testing Section */}
-        <div className="w-96">
+        {/* Middle panel - Agent Settings */}
+        <div className="w-[31%]">
+          {/* Agent Settings Component */}
+          {agent && <AgentSettings agentId={agent.agent_id} />}
+        </div>
+
+        {/* Right panel - Call Testing */}
+        <div className="w-[31%]">
+          {/* Call Testing Component */}
           {agent && <CallTesting agentId={agent.agent_id} />}
         </div>
       </div>
@@ -820,8 +759,8 @@ const AgentDetails = () => {
         <ToolConfigModal
           isOpen={!!selectedTool}
           onClose={() => {
-            setSelectedTool(null);
-            setIsCreatingTool(false);
+            setSelectedTool(null)
+            setIsCreatingTool(false)
           }}
           tool={selectedTool}
           onSave={handleToolSave}
@@ -837,17 +776,13 @@ const AgentDetails = () => {
             exit={{ opacity: 0, y: 100 }}
             className="fixed bottom-0 left-0 right-0 bg-white dark:bg-dark-200 border-t border-gray-200 dark:border-dark-100 shadow-lg z-50"
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="w-full px-2">
               <div className="py-4 flex justify-end space-x-4">
                 <button onClick={handleCancel} className="btn btn-secondary">
                   <X className="w-4 h-4 mr-2" />
                   <span>Cancel</span>
                 </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="btn btn-primary"
-                >
+                <button onClick={handleSave} disabled={saving} className="btn btn-primary">
                   {saving ? (
                     <>
                       <Loader />
@@ -866,7 +801,7 @@ const AgentDetails = () => {
         )}
       </AnimatePresence>
     </div>
-  );
-};
+  )
+}
 
-export default AgentDetails;
+export default AgentDetails
